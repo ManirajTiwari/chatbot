@@ -1,67 +1,121 @@
 import { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
+import ChatArea from './components/ChatArea';
+import ChatInput from './components/ChatInput';
 
 function App() {
   const [input, setInput] = useState('');
   
-  // 1. स्टेट शुरू होते ही LocalStorage से पुरानी बातचीत लोड करें
-  const [chat, setChat] = useState(() => {
-    const savedChat = localStorage.getItem('gemini_chat_history');
-    return savedChat ? JSON.parse(savedChat) : [];
+  const [sessions, setSessions] = useState(() => {
+    const saved = localStorage.getItem('chat_sessions');
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // 2. जब भी 'chat' एरे में नया मैसेज जुड़ेगा, यह LocalStorage में अपडेट कर देगा
+  const [currentSessionId, setCurrentSessionId] = useState(() => {
+    const savedId = localStorage.getItem('current_session_id');
+    return savedId ? JSON.parse(savedId) : null;
+  });
+
   useEffect(() => {
-    localStorage.setItem('gemini_chat_history', JSON.stringify(chat));
-  }, [chat]);
+    localStorage.setItem('chat_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    localStorage.setItem('current_session_id', JSON.stringify(currentSessionId));
+  }, [currentSessionId]);
+
+  const createNewChat = () => {
+    const newSession = {
+      id: Date.now(),
+      title: 'New Chat',
+      messages: []
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+  };
+
+  const activeSession = sessions.find((s) => s.id === currentSessionId);
+  const currentMessages = activeSession ? activeSession.messages : [];
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { sender: 'user', text: input };
-    setChat((prev) => [...prev, userMessage]);
+    let activeId = currentSessionId;
+
+    if (!activeId) {
+      const newSession = {
+        id: Date.now(),
+        title: input.slice(0, 20) + '...',
+        messages: []
+      };
+      setSessions((prev) => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      activeId = newSession.id;
+    }
+
+    const userMsg = { sender: 'user', text: input };
+    const currentInput = input;
     setInput('');
+
+    setSessions((prevSessions) =>
+      prevSessions.map((session) => {
+        if (session.id === activeId) {
+          const isFirstMessage = session.messages.length === 0;
+          return {
+            ...session,
+            title: isFirstMessage ? currentInput.slice(0, 20) + '...' : session.title,
+            messages: [...session.messages, userMsg]
+          };
+        }
+        return session;
+      })
+    );
 
     try {
       const res = await fetch('http://localhost:5000/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message: currentInput }),
       });
-      
+
       const data = await res.json();
-      setChat((prev) => [...prev, { sender: 'bot', text: data.reply }]);
+      const botMsg = { sender: 'bot', text: data.reply };
+
+      setSessions((prevSessions) =>
+        prevSessions.map((session) =>
+          session.id === activeId
+            ? { ...session, messages: [...session.messages, botMsg] }
+            : session
+        )
+      );
     } catch (err) {
       console.error(err);
     }
   };
 
-  // चैट क्लियर/डिलीट करने का फंक्शन
-  const clearChat = () => {
-    localStorage.removeItem('gemini_chat_history');
-    setChat([]);
+  const deleteSession = (id, e) => {
+    e.stopPropagation();
+    const updated = sessions.filter((s) => s.id !== id);
+    setSessions(updated);
+    if (currentSessionId === id) {
+      setCurrentSessionId(updated.length > 0 ? updated[0].id : null);
+    }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Gemini Chatbot</h2>
-      
-      {/* Clear Chat बटन */}
-      <button onClick={clearChat} style={{ marginBottom: '10px', backgroundColor: '#ff4d4d', color: 'white' }}>
-        Clear Chat
-      </button>
-
-      <div style={{ minHeight: '200px', border: '1px solid #ccc', padding: '10px' }}>
-        {chat.map((msg, i) => (
-          <p key={i}><strong>{msg.sender}:</strong> {msg.text}</p>
-        ))}
-      </div>
-
-      <input 
-        value={input} 
-        onChange={(e) => setInput(e.target.value)} 
-        placeholder="Type a message..." 
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
+      <Sidebar 
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        setCurrentSessionId={setCurrentSessionId}
+        createNewChat={createNewChat}
+        deleteSession={deleteSession}
       />
-      <button onClick={sendMessage}>Send</button>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#343541', color: 'white' }}>
+        <ChatArea currentMessages={currentMessages} />
+        <ChatInput input={input} setInput={setInput} sendMessage={sendMessage} />
+      </div>
     </div>
   );
 }
