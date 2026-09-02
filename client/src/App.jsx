@@ -103,7 +103,17 @@ function App() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
+    <div 
+      style={{ 
+        display: 'flex', 
+        height: '100vh', 
+        width: '100vw', 
+        margin: 0, 
+        padding: 0, 
+        overflow: 'hidden', 
+        fontFamily: 'sans-serif' 
+      }}
+    >
       <Sidebar 
         sessions={sessions}
         currentSessionId={currentSessionId}
@@ -112,7 +122,17 @@ function App() {
         deleteSession={deleteSession}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#343541', color: 'white' }}>
+      <div 
+        style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          height: '100vh',
+          width: '100%',
+          backgroundColor: '#343541', 
+          color: 'white' 
+        }}
+      >
         <ChatArea currentMessages={currentMessages} />
         <ChatInput input={input} setInput={setInput} sendMessage={sendMessage} />
       </div>
