@@ -71,6 +71,7 @@
   place-content: center;
   place-items: center;
   flex-grow: 1;
+  width: 100%;
 }
 
 @media (max-width: 1024px) {
@@ -82,6 +83,7 @@
 
 #next-steps {
   display: flex;
+  width: 100%;
   border-top: 1px solid var(--border);
   text-align: left;
 }
@@ -183,6 +185,7 @@
 
 #spacer {
   height: 88px;
+  width: 100%;
   border-top: 1px solid var(--border);
 }
 
